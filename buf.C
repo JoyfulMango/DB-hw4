@@ -77,18 +77,19 @@ const Status BufMgr::allocBuf(int & frame)
         
         advanceClock();
 
-        BufDesc curr = bufTable[clockHand]
+        BufDesc curr = bufTable[clockHand];
         //If frame is empty then return frame
         if( curr.valid == false )
         {
-            frame = &bufPool[clockHand];
+            //frame = &bufPool[clockHand];
+            frame = clockHand;
             return OK;
 
         }
         //If refbit is true then set to false and move to next
-        if( curr.refBit == true )
+        if( curr.refbit == true )
         {
-            bufTable.refBit = false;
+            curr.refbit = false;
             continue;
 
         }
@@ -125,7 +126,8 @@ const Status BufMgr::allocBuf(int & frame)
 
         }
 
-        frame = &bufPool[clockHand];
+        //frame = &bufPool[clockHand];
+        frame = clockHand;
         return OK;
     }
 }
@@ -133,11 +135,49 @@ const Status BufMgr::allocBuf(int & frame)
 	
 const Status BufMgr::readPage(File* file, const int PageNo, Page*& page)
 {
+    int frameNo = 0;
+    Status status;
+    if(hashTable->lookup(file, PageNo, frameNo) == OK)
+    {
+        bufTable[frameNo].refbit = true;
+        bufTable[frameNo].pinCnt++;
+        page = &bufPool[frameNo];
+        status = OK;
+
+    }
+    else
+    {
+        int frame;
+        Status ab = allocBuf(frame);
+        if(ab == OK)
+        {
+            file->readPage(PageNo, &(bufPool[frame]));
+            if( hashTable->insert(file, PageNo, frame) == OK )
+            {
+                bufTable[frame].Set(file, PageNo);
+                page = &(bufPool[frame]); 
+                status = OK;
+
+            }
+            else
+            {
+                status = HASHTBLERROR;
+            }
+
+        }
+        else if( ab == UNIXERR )
+        {
+            status =  UNIXERR;
+        }
+        else if( ab == BUFFEREXCEEDED)
+        {
+            status = BUFFEREXCEEDED;
+        }
 
 
+    }
 
-
-
+    return status;
 }
 
 
@@ -145,30 +185,50 @@ const Status BufMgr::unPinPage(File* file, const int PageNo,
 			       const bool dirty) 
 {
 
+    int frameNo = 0;
+    Status status = hashTable->lookup(file, PageNo, frameNo);
+    BufDesc frame = bufTable[frameNo];
 
+    if (status == HASHNOTFOUND) 
+    {
+        return HASHNOTFOUND;
+    }
 
+    int pinCount = frame.pinCnt;
+    if (pinCount == 0) 
+    {
+        return PAGENOTPINNED;
+    }
 
+    if(dirty == true) 
+    {
+        frame.dirty = true;
+    }
+
+    frame.pinCnt--;
+
+    return OK;
 
 }
 
 const Status BufMgr::allocPage(File* file, int& pageNo, Page*& page) 
 {
 
-    Status status;
+    Status status = OK;
     
     if(file->allocatePage(pageNo) != OK)
     {
         return UNIXERR;
     }
 
-    int freshFrame;
+    int freshFrame = 0;
     status = allocBuf(freshFrame);
     if(status != OK)
     {
         return status;
     }
 
-    status = hashTable.insert(file, pageNo, freshFrame);
+    status = hashTable->insert(file, pageNo, freshFrame);
     if(status != OK)
     {
         return status;
