@@ -66,6 +66,80 @@ BufMgr::~BufMgr() {
 const Status BufMgr::allocBuf(int & frame) 
 {
 
+    //Index before incrementing clock for first time
+    int startIndex = clockHand;
+    //Counter to count how many pages are pinned every full loop 
+    int pinCounter = 0;
+
+    //Perma loop
+    while(1)
+    {
+        
+        advanceClock();
+
+        BufDesc curr = bufTable[clockHand]
+        //If frame is empty then return frame
+        if( curr.valid == false )
+        {
+            frame = &bufPool[clockHand];
+            return OK;
+
+        }
+        //If refbit is true then set to false and move to next
+        if( curr.refBit == true )
+        {
+            bufTable.refBit = false;
+            continue;
+
+        }
+        //If pin count is greater than 0, move on to next
+        if( curr.pinCnt > 0 )
+        {
+            //increment counter to see how many frames are full
+            pinCounter++;
+         
+            //If back where we started, and every frame is full, then return bufferexceeded
+            if( clockHand == startIndex ) 
+            {
+                if(pinCounter == numBufs) 
+                {
+                    return BUFFEREXCEEDED;
+                }
+                else
+                {
+                    pinCounter = 0;
+
+                }
+
+            }
+
+            continue;
+        }
+        //if dirty, write back
+        if( curr.dirty == true )
+        {
+            Status write = curr.file->writePage(curr.pageNo, &bufPool[clockHand] );
+            if( write != OK )
+            {
+                return UNIXERR;
+            }
+
+        }
+
+        frame = &bufPool[clockHand];
+        return OK;
+
+        
+
+    }
+
+
+
+    
+    
+
+
+
 
 
 
