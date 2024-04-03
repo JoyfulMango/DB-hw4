@@ -71,29 +71,16 @@ const Status BufMgr::allocBuf(int & frame)
     //Counter to count how many pages are pinned every full loop 
     int pinCounter = 0;
 
-    for (int i = 0; i<numBufs; ++i)
-        {
-            std::cout << (bufTable[i].valid ? "1" : "0") << " ";
-        }
-        std::cout << std::endl;
-
     //Perma loop
     while(1)
     {
 
-        // for (int i = 0; i<numBufs; ++i)
-        // {
-        //     std::cout << (bufTable[i].refbit ? "1" : "0") << " ";
-        // }
-        // std::cout << std::endl;
-        
+       
         advanceClock();
 
-        // BufDesc curr = bufTable[clockHand];
         //If frame is empty then return frame
         if( bufTable[clockHand].valid == false )
         {
-            //frame = &bufPool[clockHand];
             frame = clockHand;
             return OK;
 
@@ -101,12 +88,6 @@ const Status BufMgr::allocBuf(int & frame)
         //If refbit is true then set to false and move to next
         if( bufTable[clockHand].refbit == true )
         {
-            // curr.refbit = false;
-            // cout << bufTable[clockHand].refbit << " ";
-            // cout << endl;
-            // cout << curr.refbit << " ";
-            // cout << endl;
-
             bufTable[clockHand].refbit = false;
             continue;
 
@@ -124,6 +105,7 @@ const Status BufMgr::allocBuf(int & frame)
                 {
                     return BUFFEREXCEEDED;
                 }
+                //if not bufferexceeded, reset counter for next full loop
                 else
                 {
                     pinCounter = 0;
@@ -136,6 +118,7 @@ const Status BufMgr::allocBuf(int & frame)
         //if dirty, write back
         if( bufTable[clockHand].dirty == true )
         {
+            //Write file back to disk
             Status write = bufTable[clockHand].file->writePage(bufTable[clockHand].pageNo, &bufPool[clockHand]);
             if( write != OK )
             {
@@ -143,6 +126,7 @@ const Status BufMgr::allocBuf(int & frame)
             }
         }
 
+        //remove page from hashtable and clear frame desc
         hashTable->remove(bufTable[clockHand].file, bufTable[clockHand].pageNo);
         bufTable[clockHand].Clear();
 
@@ -157,16 +141,14 @@ const Status BufMgr::readPage(File* file, const int PageNo, Page*& page)
 {
     int frameNo = 0;
     Status status;
+
     if(hashTable->lookup(file, PageNo, frameNo) == OK)
     {
-        cout << file << endl;
-        cout << PageNo << endl;
         bufTable[frameNo].refbit = true;
         bufTable[frameNo].pinCnt++;
         page = &bufPool[frameNo];
-        cout << (char*)page << endl;
         status = OK;
-        printSelf();
+        //printSelf();
 
     }
     else

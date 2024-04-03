@@ -12,7 +12,7 @@ LD =		ld
 LDFLAGS =	
 
 CXX =           g++
-CXXFLAGS =	-g #-Wall
+CXXFLAGS =	-g -Wall
 
 PURIFY =        purify -collector=/usr/ccs/bin/ld -g++
 
