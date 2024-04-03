@@ -190,9 +190,29 @@ const Status BufMgr::unPinPage(File* file, const int PageNo,
 			       const bool dirty) 
 {
 
+    int frameNo = 0;
+    Status status = hashTable->lookup(file, PageNo, frameNo);
+    BufDesc frame = buffTable[frameNo];
 
+    if (status == HASHNOTFOUND) 
+    {
+        return HASHNOTFOUND;
+    }
 
+    int pinCount = frame.pinCnt;
+    if (pinCount == 0) 
+    {
+        return PAGENOTPINNED;
+    }
 
+    if(dirty == true) 
+    {
+        frame.dirty = true;
+    }
+
+    frame.pinCnt--;
+
+    return OK;
 
 }
 
