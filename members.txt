@@ -1,0 +1,3 @@
+Robin Yang: Contributed to allocBuf and implemented readPage.
+Harshil Mamidi: Contributed to allocBuf and implemented allocPage. Also worked on debugging steps.
+Ashish Priyadarshi: Contributed to allocBuf and implemented allocPage.
