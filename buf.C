@@ -81,7 +81,8 @@ const Status BufMgr::allocBuf(int & frame)
         //If frame is empty then return frame
         if( curr.valid == false )
         {
-            frame = &bufPool[clockHand];
+            //frame = &bufPool[clockHand];
+            frame = clockHand;
             return OK;
 
         }
@@ -126,7 +127,8 @@ const Status BufMgr::allocBuf(int & frame)
 
         }
 
-        frame = &bufPool[clockHand];
+        //frame = &bufPool[clockHand];
+        frame = clockHand;
         return OK;
 
         
@@ -139,12 +141,13 @@ const Status BufMgr::allocBuf(int & frame)
 const Status BufMgr::readPage(File* file, const int PageNo, Page*& page)
 {
     int frameNo = 0;
+    Status status;
     if(hashTable.lookup(file, PageNo, frameNo) = OK)
     {
         bufTable[frameNo].refbit = true;
         bufTable[frameNo].pinCnt++;
         page = &bufPool[frameNo];
-        return OK;
+        status = OK;
 
     }
     else
@@ -153,22 +156,33 @@ const Status BufMgr::readPage(File* file, const int PageNo, Page*& page)
         Status ab = allocBuf(frame);
         if(ab == OK)
         {
-            file->readPage(PageNo, 
+            file->readPage(PageNo, *(bufPool[frame]));
+            if( hashTable.insert(file, PageNo, frame) == OK )
+            {
+                bufTable[frame].Set(file, PageNo);
+                page = &(bufPool[frame]); 
+                status = OK;
+
+            }
+            else
+            {
+                status = HASHTBLERROR;
+            }
 
         }
         else if( ab == UNIXERR )
         {
-            return UNIXERR;
+            status =  UNIXERR;
         }
         else if( ab == BUFFEREXCEEDED)
         {
-            return BUFFEREXCEEDED;
+            status = BUFFEREXCEEDED;
         }
 
 
-
-
     }
+
+    return status;
 }
 
 
