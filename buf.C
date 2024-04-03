@@ -133,28 +133,42 @@ const Status BufMgr::allocBuf(int & frame)
 
     }
 
-
-
-    
-    
-
-
-
-
-
-
-
-
 }
 
 	
 const Status BufMgr::readPage(File* file, const int PageNo, Page*& page)
 {
+    int frameNo = 0;
+    if(hashTable.lookup(file, PageNo, frameNo) = OK)
+    {
+        bufTable[frameNo].refbit = true;
+        bufTable[frameNo].pinCnt++;
+        page = &bufPool[frameNo];
+        return OK;
+
+    }
+    else
+    {
+        int frame;
+        Status ab = allocBuf(frame);
+        if(ab == OK)
+        {
+            file->readPage(PageNo, 
+
+        }
+        else if( ab == UNIXERR )
+        {
+            return UNIXERR;
+        }
+        else if( ab == BUFFEREXCEEDED)
+        {
+            return BUFFEREXCEEDED;
+        }
 
 
 
 
-
+    }
 }
 
 
