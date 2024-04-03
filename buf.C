@@ -110,7 +110,6 @@ const Status BufMgr::allocBuf(int & frame)
                     pinCounter = 0;
 
                 }
-
             }
 
             continue;
@@ -128,23 +127,7 @@ const Status BufMgr::allocBuf(int & frame)
 
         frame = &bufPool[clockHand];
         return OK;
-
-        
-
     }
-
-
-
-    
-    
-
-
-
-
-
-
-
-
 }
 
 	
@@ -171,12 +154,31 @@ const Status BufMgr::unPinPage(File* file, const int PageNo,
 const Status BufMgr::allocPage(File* file, int& pageNo, Page*& page) 
 {
 
+    Status status;
+    
+    if(file->allocatePage(pageNo) != OK)
+    {
+        return UNIXERR;
+    }
 
+    int freshFrame;
+    status = allocBuf(freshFrame);
+    if(status != OK)
+    {
+        return status;
+    }
 
+    status = hashTable.insert(file, pageNo, freshFrame);
+    if(status != OK)
+    {
+        return status;
+    }
 
+    bufTable[freshFrame].Set(file, pageNo);
 
+    page = &bufPool[freshFrame];
 
-
+    return OK;
 }
 
 const Status BufMgr::disposePage(File* file, const int pageNo) 
