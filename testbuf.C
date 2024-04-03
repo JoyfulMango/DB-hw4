@@ -233,8 +233,11 @@ int main()
     cout << "Pages in order.  Values matching page number.\n\n";
 
     for (i = 1; i < num; i++) {
+      cout << i << endl;
       CALL(bufMgr->readPage(file1, i, page));
+      cout << file1 << endl;
       sprintf((char*)&cmp, "test.1 Page %d %7.1f", i, (float)i);
+      cout << (char*)&cmp << endl;
       ASSERT(memcmp(page, &cmp, strlen((char*)&cmp)) == 0);
       cout << (char*)page << endl;
     }

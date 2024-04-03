@@ -71,15 +71,27 @@ const Status BufMgr::allocBuf(int & frame)
     //Counter to count how many pages are pinned every full loop 
     int pinCounter = 0;
 
+    for (int i = 0; i<numBufs; ++i)
+        {
+            std::cout << (bufTable[i].valid ? "1" : "0") << " ";
+        }
+        std::cout << std::endl;
+
     //Perma loop
     while(1)
     {
+
+        // for (int i = 0; i<numBufs; ++i)
+        // {
+        //     std::cout << (bufTable[i].refbit ? "1" : "0") << " ";
+        // }
+        // std::cout << std::endl;
         
         advanceClock();
 
-        BufDesc curr = bufTable[clockHand];
+        // BufDesc curr = bufTable[clockHand];
         //If frame is empty then return frame
-        if( curr.valid == false )
+        if( bufTable[clockHand].valid == false )
         {
             //frame = &bufPool[clockHand];
             frame = clockHand;
@@ -87,14 +99,20 @@ const Status BufMgr::allocBuf(int & frame)
 
         }
         //If refbit is true then set to false and move to next
-        if( curr.refbit == true )
+        if( bufTable[clockHand].refbit == true )
         {
-            curr.refbit = false;
+            // curr.refbit = false;
+            // cout << bufTable[clockHand].refbit << " ";
+            // cout << endl;
+            // cout << curr.refbit << " ";
+            // cout << endl;
+
+            bufTable[clockHand].refbit = false;
             continue;
 
         }
         //If pin count is greater than 0, move on to next
-        if( curr.pinCnt > 0 )
+        if( bufTable[clockHand].pinCnt > 0 )
         {
             //increment counter to see how many frames are full
             pinCounter++;
@@ -116,15 +134,17 @@ const Status BufMgr::allocBuf(int & frame)
             continue;
         }
         //if dirty, write back
-        if( curr.dirty == true )
+        if( bufTable[clockHand].dirty == true )
         {
-            Status write = curr.file->writePage(curr.pageNo, &bufPool[clockHand] );
+            Status write = bufTable[clockHand].file->writePage(bufTable[clockHand].pageNo, &bufPool[clockHand]);
             if( write != OK )
             {
                 return UNIXERR;
             }
-
         }
+
+        hashTable->remove(bufTable[clockHand].file, bufTable[clockHand].pageNo);
+        bufTable[clockHand].Clear();
 
         //frame = &bufPool[clockHand];
         frame = clockHand;
@@ -139,10 +159,14 @@ const Status BufMgr::readPage(File* file, const int PageNo, Page*& page)
     Status status;
     if(hashTable->lookup(file, PageNo, frameNo) == OK)
     {
+        cout << file << endl;
+        cout << PageNo << endl;
         bufTable[frameNo].refbit = true;
         bufTable[frameNo].pinCnt++;
         page = &bufPool[frameNo];
+        cout << (char*)page << endl;
         status = OK;
+        printSelf();
 
     }
     else
@@ -151,7 +175,11 @@ const Status BufMgr::readPage(File* file, const int PageNo, Page*& page)
         Status ab = allocBuf(frame);
         if(ab == OK)
         {
-            file->readPage(PageNo, &(bufPool[frame]));
+            Status rp = file->readPage(PageNo, &(bufPool[frame]));
+            if( rp != OK)
+            {
+                return rp;
+            }
             if( hashTable->insert(file, PageNo, frame) == OK )
             {
                 bufTable[frame].Set(file, PageNo);
@@ -178,6 +206,7 @@ const Status BufMgr::readPage(File* file, const int PageNo, Page*& page)
     }
 
     return status;
+
 }
 
 
@@ -187,14 +216,14 @@ const Status BufMgr::unPinPage(File* file, const int PageNo,
 
     int frameNo = 0;
     Status status = hashTable->lookup(file, PageNo, frameNo);
-    BufDesc frame = bufTable[frameNo];
+    // BufDesc frame = bufTable[frameNo];
 
     if (status == HASHNOTFOUND) 
     {
         return HASHNOTFOUND;
     }
 
-    int pinCount = frame.pinCnt;
+    int pinCount = bufTable[frameNo].pinCnt;
     if (pinCount == 0) 
     {
         return PAGENOTPINNED;
@@ -202,10 +231,10 @@ const Status BufMgr::unPinPage(File* file, const int PageNo,
 
     if(dirty == true) 
     {
-        frame.dirty = true;
+        bufTable[frameNo].dirty = true;
     }
 
-    frame.pinCnt--;
+    bufTable[frameNo].pinCnt--;
 
     return OK;
 
@@ -239,6 +268,7 @@ const Status BufMgr::allocPage(File* file, int& pageNo, Page*& page)
     page = &bufPool[freshFrame];
 
     return OK;
+
 }
 
 const Status BufMgr::disposePage(File* file, const int pageNo) 
@@ -307,7 +337,8 @@ void BufMgr::printSelf(void)
              << "\tpinCnt: " << tmpbuf->pinCnt;
     
         if (tmpbuf->valid == true)
-            cout << "\tvalid\n";
+            cout << "\tvalid\t";
+        cout << tmpbuf->file;
         cout << endl;
     };
 }

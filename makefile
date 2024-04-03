@@ -12,7 +12,7 @@ LD =		ld
 LDFLAGS =	
 
 CXX =           g++
-CXXFLAGS =	-g -Wall
+CXXFLAGS =	-g #-Wall
 
 PURIFY =        purify -collector=/usr/ccs/bin/ld -g++
 
@@ -30,7 +30,7 @@ OBJS =  db.o buf.o bufHash.o error.o page.o testbuf.o
 OBJS2 =  db.o buf.o bufHash.o error.o
 SRCS =	db.C buf.C bufHash.C error.C page.c testbuf.C 
 
-all:		testbuf 
+all:	clean	testbuf 
 
 testbuf:	$(OBJS) 
 		$(CXX) -o $@ $(OBJS) $(LDFLAGS)
